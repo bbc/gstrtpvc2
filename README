@@ -1,0 +1,28 @@
+Gstreamer RTP Payloader and Depayloader for VC-2
+================================================
+
+This repository contains a gstreamer plugin which implements the internet draft
+draft-weaver-payload-rtp-vc2hq-00 which specifies a mechanism for the transport
+of VC-2 video in RTP.
+
+The two elements included are:
+  o rtpvc2pay -- a payloader which takes in VC-2 video and outputs RTP packets
+and
+  o rtpvc2depay -- a depayloader which reverses this process.
+
+A test pipleine such as 
+
+  filesrc location="input.vc2" ! typefind ! rtpvc2pay ! rtpvc2depay ! filesink location="output.vc2"
+
+will load an input vc2 file and output an exact byte-for-byte duplicate of it.
+
+
+For a more full test two machines are required, with the transmitter running:
+
+  multifilesrc loop=TRUE location="input.vc2" ! typefind ! rtpvc2pay ! udpsink host=<RX_IP> port=5555
+
+which will print the caps for the RTP stream as well as starting the transmission.
+
+The receiver should run:
+
+ udpsrc port=5555 caps="<CAPS_FROM_TX>" ! queue ! rtpvc2depay ! filesink location="output.vc2" 
