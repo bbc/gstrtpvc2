@@ -37,7 +37,7 @@ GST_DEBUG_CATEGORY_STATIC (rtpvc2pay_debug);
 
 /* references:
  *
- * https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-00
+ * https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-01
  */
 
 static GstStaticPadTemplate gst_rtp_vc2_pay_sink_template =
@@ -102,7 +102,7 @@ gst_rtp_vc2_pay_class_init (GstRtpVC2PayClass * klass)
 
   gst_element_class_set_static_metadata (gstelement_class, "RTP VC2 payloader",
       "Codec/Payloader/Network/RTP",
-      "Payload-encode VC2 video into RTP packets (https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-00)",
+      "Payload-encode VC2 video into RTP packets (https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-01)",
       "James Weaver <james.barrett@bbc.co.uk>");
 
   gstelement_class->change_state =
@@ -423,6 +423,8 @@ gst_rtp_vc2_buffer_new_allocate (GstRTPBasePayload *payload,
 static GstBuffer *
 gst_rtp_vc2_hq_picture_buffer_new_with_data(GstRTPBasePayload *payload,
                                             guint32 picture_number,
+                                            guint16 slice_prefix_bytes,
+                                            guint16 slice_size_scaler,
                                             guint8 *data,
                                             gsize size,
                                             gint n_slices,
@@ -440,7 +442,7 @@ gst_rtp_vc2_hq_picture_buffer_new_with_data(GstRTPBasePayload *payload,
   interlace = rtpvc2pay->seq_hdr->interlaced;
   second_field = (interlace && (picture_number&0x1));
 
-  hdr_length = (n_slices == 0)?(8):(12);
+  hdr_length = (n_slices == 0)?(12):(16);
 
   outbuf = gst_rtp_vc2_buffer_new_allocate(payload, 0xEC, interlace, second_field);
   hdrbuf = gst_buffer_new_allocate(NULL, hdr_length + size, NULL);
@@ -448,20 +450,24 @@ gst_rtp_vc2_hq_picture_buffer_new_with_data(GstRTPBasePayload *payload,
   if (!gst_buffer_map(hdrbuf, &info, GST_MAP_WRITE))
     return NULL;
 
-  info.data[0] = (picture_number >> 24)&0xFF;
-  info.data[1] = (picture_number >> 16)&0xFF;
-  info.data[2] = (picture_number >>  8)&0xFF;
-  info.data[3] = (picture_number >>  0)&0xFF;
-  info.data[4] = (size >>  8)&0xFF;
-  info.data[5] = (size >>  0)&0xFF;
-  info.data[6] = (n_slices >>  8)&0xFF;
-  info.data[7] = (n_slices >>  0)&0xFF;
+  info.data[ 0] = (picture_number >> 24)&0xFF;
+  info.data[ 1] = (picture_number >> 16)&0xFF;
+  info.data[ 2] = (picture_number >>  8)&0xFF;
+  info.data[ 3] = (picture_number >>  0)&0xFF;
+  info.data[ 4] = (slice_prefix_bytes >> 16)&0xFF;
+  info.data[ 5] = (slice_prefix_bytes >>  0)&0xFF;
+  info.data[ 6] = (slice_size_scaler >> 16)&0xFF;
+  info.data[ 7] = (slice_size_scaler >>  0)&0xFF;
+  info.data[ 8] = (size >>  8)&0xFF;
+  info.data[ 9] = (size >>  0)&0xFF;
+  info.data[10] = (n_slices >>  8)&0xFF;
+  info.data[11] = (n_slices >>  0)&0xFF;
 
   if (n_slices) {
-    info.data[ 8] = (slice_x >>  8)&0xFF;
-    info.data[ 9] = (slice_x >>  0)&0xFF;
-    info.data[10] = (slice_y >>  8)&0xFF;
-    info.data[11] = (slice_y >>  0)&0xFF;
+    info.data[12] = (slice_x >>  8)&0xFF;
+    info.data[13] = (slice_x >>  0)&0xFF;
+    info.data[14] = (slice_y >>  8)&0xFF;
+    info.data[15] = (slice_y >>  0)&0xFF;
   }
 
   memcpy(info.data + hdr_length, data, size);
@@ -599,7 +605,8 @@ gst_rtp_vc2_pay_payload_hqpicture(GstRTPBasePayload * basepayload, GstBuffer *bu
   }
 
   offset = 4;
-  outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number, info.data + offset, params->coded_size, 0, 0, 0);
+  outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number, params->slice_prefix_bytes, params->slice_size_scalar,
+                                                       info.data + offset, params->coded_size, 0, 0, 0);
   GST_BUFFER_PTS (outbuf) = pts;
   GST_BUFFER_DTS (outbuf) = dts;
   ret = gst_rtp_vc2_payload_push(basepayload, outbuf);
@@ -619,7 +626,8 @@ gst_rtp_vc2_pay_payload_hqpicture(GstRTPBasePayload * basepayload, GstBuffer *bu
 
     if (n_slices > 0 && offs + slice_length + 16 > mtu) {
 
-      outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number, info.data + offset, offs, n_slices, offset_x, offset_y);
+      outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number, params->slice_prefix_bytes, params->slice_size_scalar,
+                                                           info.data + offset, offs, n_slices, offset_x, offset_y);
       GST_BUFFER_PTS (outbuf) = pts;
       GST_BUFFER_DTS (outbuf) = dts;
       ret = gst_rtp_vc2_payload_push(basepayload, outbuf);
@@ -641,7 +649,9 @@ gst_rtp_vc2_pay_payload_hqpicture(GstRTPBasePayload * basepayload, GstBuffer *bu
   }
 
   if (ret == GST_FLOW_OK && offs > 0) {
-    outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number, info.data + offset, offs, n_slices, offset_x, offset_y);
+    outbuf = gst_rtp_vc2_hq_picture_buffer_new_with_data(basepayload, picture_number,
+                                                         params->slice_prefix_bytes, params->slice_size_scalar,
+                                                         info.data + offset, offs, n_slices, offset_x, offset_y);
     GST_BUFFER_PTS (outbuf) = pts;
     GST_BUFFER_DTS (outbuf) = dts;
     memset(&rtp, 0, sizeof(rtp));

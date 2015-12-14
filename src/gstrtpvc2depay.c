@@ -84,7 +84,7 @@ gst_rtp_vc2_depay_class_init (GstRtpVC2DepayClass * klass)
 
   gst_element_class_set_static_metadata (gstelement_class,
       "RTP VC2 depayloader", "Codec/Depayloader/Network/RTP",
-      "Extracts VC2 video from RTP packets (ID draft-weaver-payload-rtp-vc2hq-00)",
+      "Extracts VC2 video from RTP packets (ID draft-weaver-payload-rtp-vc2hq-01)",
       "James Weaver <james.barrett@bbc.co.uk>");
   gstelement_class->change_state = gst_rtp_vc2_depay_change_state;
 
@@ -286,19 +286,19 @@ gst_rtp_vc2_depay_process_hq_fragment (GstRTPBaseDepayload * depayload, guint8 *
 
   rtpvc2depay = GST_RTP_VC2_DEPAY (depayload);
 
-  if (length < 8)
+  if (length < 12)
     return NULL;
 
   picture_number = ((payload[0] << 24) |
                     (payload[1] << 16) |
                     (payload[2] <<  8) |
                     (payload[3] <<  0));
-  fragment_length = ((payload[4] << 8) |
-                     (payload[5] << 0));
-  no_slices = ((payload[6] << 8) |
-               (payload[7] << 0));
+  fragment_length = ((payload[8] << 8) |
+                     (payload[9] << 0));
+  no_slices = ((payload[10] << 8) |
+               (payload[11] << 0));
 
-  if (fragment_length > length - 8)
+  if (fragment_length > length - 12)
     return NULL;
 
   if (no_slices == 0) {
@@ -324,7 +324,7 @@ gst_rtp_vc2_depay_process_hq_fragment (GstRTPBaseDepayload * depayload, guint8 *
       return NULL;
     }
 
-    memcpy(info.data, payload + 8, fragment_length);
+    memcpy(info.data, payload + 12, fragment_length);
 
     gst_buffer_unmap(buf, &info);
 
@@ -333,7 +333,7 @@ gst_rtp_vc2_depay_process_hq_fragment (GstRTPBaseDepayload * depayload, guint8 *
 
     return NULL;
   } else {
-    if (!rtpvc2depay->in_picture || (rtpvc2depay->picture_number != picture_number) || fragment_length > length - 12) {
+    if (!rtpvc2depay->in_picture || (rtpvc2depay->picture_number != picture_number) || fragment_length > length - 16) {
       gst_adapter_clear (rtpvc2depay->adapter);
       rtpvc2depay->in_picture     = FALSE;
       return NULL;
@@ -355,7 +355,7 @@ gst_rtp_vc2_depay_process_hq_fragment (GstRTPBaseDepayload * depayload, guint8 *
       return NULL;
     }
 
-    memcpy(info.data, payload + 12, fragment_length);
+    memcpy(info.data, payload + 16, fragment_length);
 
     gst_buffer_unmap(buf, &info);
 
