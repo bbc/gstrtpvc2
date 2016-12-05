@@ -84,7 +84,7 @@ gst_rtp_vc2_depay_class_init (GstRtpVC2DepayClass * klass)
 
   gst_element_class_set_static_metadata (gstelement_class,
       "RTP VC2 depayloader", "Codec/Depayloader/Network/RTP",
-      "Extracts VC2 video from RTP packets (ID draft-weaver-payload-rtp-vc2hq-01)",
+      "Extracts VC2 video from RTP packets (ID draft-ietf-payload-rtp-vc2hq-01)",
       "James Weaver <james.barrett@bbc.co.uk>");
   gstelement_class->change_state = gst_rtp_vc2_depay_change_state;
 

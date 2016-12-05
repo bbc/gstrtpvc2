@@ -37,7 +37,7 @@ GST_DEBUG_CATEGORY_STATIC (rtpvc2pay_debug);
 
 /* references:
  *
- * https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-01
+ * https://tools.ietf.org/html/draft-ietf-payload-rtp-vc2hq-01
  */
 
 static GstStaticPadTemplate gst_rtp_vc2_pay_sink_template =
@@ -102,7 +102,7 @@ gst_rtp_vc2_pay_class_init (GstRtpVC2PayClass * klass)
 
   gst_element_class_set_static_metadata (gstelement_class, "RTP VC2 payloader",
       "Codec/Payloader/Network/RTP",
-      "Payload-encode VC2 video into RTP packets (https://tools.ietf.org/html/draft-weaver-payload-rtp-vc2hq-01)",
+      "Payload-encode VC2 video into RTP packets (https://tools.ietf.org/html/draft-ietf-payload-rtp-vc2hq-01)",
       "James Weaver <james.barrett@bbc.co.uk>");
 
   gstelement_class->change_state =
