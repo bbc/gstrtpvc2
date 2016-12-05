@@ -2,7 +2,7 @@ Gstreamer RTP Payloader and Depayloader for VC-2
 ================================================
 
 This repository contains a gstreamer plugin which implements the internet draft
-draft-ietf-payload-rtp-vc2hq-00 which specifies a mechanism for the transport
+draft-ietf-payload-rtp-vc2hq-01 which specifies a mechanism for the transport
 of VC-2 video in RTP.
 
 The two elements included are:
