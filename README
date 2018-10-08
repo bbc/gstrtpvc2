@@ -1,3 +1,5 @@
+NOTE: The VC-2 RTP payload specification has recently been published via the IETF as RFC 8450 (https://www.rfc-editor.org/rfc/rfc8450.txt). This implementation is out of date with respect to the published specification and should not currently be used as a reference.
+
 Gstreamer RTP Payloader and Depayloader for VC-2
 ================================================
 
